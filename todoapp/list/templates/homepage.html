@@ -1,0 +1,140 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <link rel="stylesheet" href="{% static 'homepage.css' %}">
+    <style>
+        /* Center content with flexbox */
+        .center-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        /* Center content for h1 and h2 */
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Style filter checkbox in the center */
+        .filter-checkbox {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        /* Center the add task button */
+        .add-task-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 15px 30px;
+            background-color: #f39c12;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .add-task-btn:hover {
+            background-color: #e67e22;
+        }
+    </style>
+</head>
+<body>
+    <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
+
+    <!-- Centered content container -->
+    <div class="center-container">
+        <h1>Hello, {{ user.username }}!</h1>
+        <h2>Your Tasks:</h2>
+    </div>
+
+    <!-- Center the filter checkbox -->
+    <div class="filter-checkbox">
+        <label for="show-incomplete">Show Incomplete Tasks Only</label>
+        <!-- This checkbox will be checked if 'show_incomplete' is True -->
+        <input type="checkbox" id="show-incomplete" {% if show_incomplete %}checked{% endif %} onChange="toggleFilter(this)">
+    </div>
+
+    <!-- Task Container -->
+    <div class="task-container">
+        {% csrf_token %}
+        {% if tasks %}
+            {% for task in tasks %}
+                <div class="task-box">
+                    <div class="created-at">{{ task.created_at|date:"F d, Y" }}</div>
+                    <div class="completed-checkbox">
+                        <label for="task-{{ task.id }}">Completed</label>
+                        <input type="checkbox" id="task-{{ task.id }}" data-task-id="{{ task.id }}" 
+                               {% if task.completed %}checked{% endif %} onChange="toggleCompletion(this)">
+                    </div>
+                    <h3>{{ task.title }}</h3>
+                    <p>{{ task.description }}</p>
+                    <div class="task-actions">
+                        <a href="{% url 'updatetask' task.id %}"><button class="update-btn">Update</button></a>
+                        <a href="{% url 'deletetask' task.id %}"><button class="delete-btn">Delete</button></a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: white;">You have no tasks.</p>
+        {% endif %}
+    </div>
+
+    <!-- Add Task Button centered -->
+    <a href="{% url 'addtask' %}">
+        <button class="add-task-btn">Add Task</button>
+    </a>
+
+    <!-- Logout Button -->
+    <a href="{% url 'login' %}">
+        <button class="logout-btn">Logout</button>
+    </a>
+
+    <!-- Add JavaScript -->
+    <script>
+        // JavaScript to handle the filter checkbox
+        function toggleFilter(checkbox) {
+            var showIncomplete = checkbox.checked;  // Check if the checkbox is checked or not
+            var url = new URL(window.location.href);  // Get the current page URL
+            if (showIncomplete) {
+                url.searchParams.set('show_incomplete', 'true');  // Add the query parameter
+            } else {
+                url.searchParams.delete('show_incomplete');  // Remove the query parameter
+            }
+            window.location.href = url.toString();  // Reload the page with the new query parameter
+        }
+
+        // JavaScript to handle task completion toggle
+        function toggleCompletion(checkbox) {
+            var taskId = checkbox.getAttribute('data-task-id');  // Get task ID from the data attribute
+            var csrfToken = document.getElementById('csrf_token').value;
+            var formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch('/taskcompleted/' + taskId + '/', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Task updated: ' + data.completed);
+                } else {
+                    console.log('Failed to update task');
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
